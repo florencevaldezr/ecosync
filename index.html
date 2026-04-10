@@ -1,0 +1,553 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoSync | Pro Hybrid Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #161b22;
+            --low-load: #00d2ff;
+            --high-load: #ff4444;
+            --text-main: #ffffff;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding-bottom: 30px;
+        }
+
+        .glass-card {
+            background: rgba(22, 27, 34, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            position: relative;
+        }
+
+        .fixed-card {
+            height: 250px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .header-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--low-load);
+            box-shadow: 0 0 10px var(--low-load);
+        }
+
+        .header-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .outlet-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .watts-display {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1;
+            margin: 5px 0;
+        }
+
+        .low-accent {
+            color: var(--low-load);
+        }
+
+        .high-accent {
+            color: var(--high-load);
+        }
+
+        .status-badge {
+            font-size: 0.9rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            display: block;
+            text-transform: uppercase;
+        }
+
+        .btn-control {
+            font-weight: 800;
+            border-radius: 12px;
+            padding: 12px;
+            border: none;
+            transition: 0.2s;
+        }
+
+        .rate-badge {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid var(--accent-green);
+            padding: 4px 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .rate-input {
+            background: transparent;
+            border: none;
+            color: var(--accent-green);
+            font-weight: 800;
+            width: 75px;
+            text-align: center;
+            outline: none;
+            font-size: 0.95rem;
+        }
+
+        .log-outer-card {
+            padding: 0 !important;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 350px;
+        }
+
+        .log-scroll-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: #0d1117;
+        }
+
+        .table-logs, .table-readings {
+            color: #8b949e;
+            font-size: 0.82rem;
+            width: 100%;
+            margin: 0;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+            .table-logs thead th, .table-readings thead th {
+                position: sticky;
+                top: 0;
+                background: #1c2128;
+                padding: 12px 5px;
+                border-bottom: 1px solid #30363d;
+                z-index: 2;
+                color: #ffffff;
+                font-weight: 700;
+                text-align: center;
+            }
+
+            .table-logs tbody td, .table-readings tbody td {
+                padding: 10px 5px;
+                border-bottom: 1px solid #21262d;
+                text-align: center;
+                vertical-align: middle;
+            }
+
+        .log-container {
+            height: 140px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+
+        .filter-btn {
+            font-size: 7.5px;
+            min-width: 48px;
+            border: 1px solid #30363d;
+            padding: 4px;
+            color: white;
+            border-radius: 6px;
+        }
+
+        .top-readings-btn {
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--accent-green);
+            background: transparent;
+            color: var(--accent-green);
+            text-transform: uppercase;
+        }
+
+        .active-filter {
+            background-color: var(--accent-green) !important;
+            border-color: var(--accent-green) !important;
+            color: #000 !important;
+        }
+
+        .summary-item {
+            border-bottom: 1px solid #30363d;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        .summary-date {
+            font-weight: 800;
+            color: #ffffff;
+            font-size: 0.85rem;
+            display: block;
+            text-transform: uppercase;
+        }
+
+        .summary-details {
+            font-size: 0.75rem;
+            color: #8b949e;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .status-on {
+            color: var(--accent-green) !important;
+        }
+
+        .status-off {
+            color: var(--accent-red) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container py-4">
+        <div class="row mb-3 align-items-center">
+            <div class="col-12">
+                <h3 class="fw-800 m-0">ECO<span class="low-accent">SYNC</span></h3>
+                <p class="text-muted small">Hybrid System Performance Dashboard</p>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4 align-items-start">
+            <div class="col-md-4">
+                <div class="glass-card fixed-card border-top border-info border-4">
+                    <span class="outlet-label text-info">OUTLET 1 (LOAD)</span>
+                    <div class="watts-display low-accent" id="watts-1">0.00</div>
+                    <span id="status-1" class="status-badge" style="margin-bottom: 35px;">Status: --</span>
+                    <div class="row g-2">
+                        <div class="col-6"><button class="btn btn-success btn-control w-100" onclick="updateStatus(1, 'ON')">ON</button></div>
+                        <div class="col-6"><button class="btn btn-danger btn-control w-100" onclick="updateStatus(1, 'OFF')">OFF</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="glass-card fixed-card border-top border-danger border-4">
+                    <span class="outlet-label text-danger">OUTLET 2 (LOAD)</span>
+                    <div class="watts-display high-accent" id="watts-2">0.00</div>
+                    <span id="status-2" class="status-badge" style="margin-bottom: 35px;">Status: --</span>
+                    <div class="row g-2">
+                        <div class="col-6"><button class="btn btn-success btn-control w-100" onclick="updateStatus(2, 'ON')">ON</button></div>
+                        <div class="col-6"><button class="btn btn-danger btn-control w-100" onclick="updateStatus(2, 'OFF')">OFF</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="glass-card fixed-card bg-success bg-opacity-10 border-success border-top border-4 text-center">
+                    <div id="view-main-saved">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="outlet-label text-success">TOTAL SAVED COST</span>
+                            <div class="rate-badge">
+                                <span class="small fw-bold text-success me-1">₱</span>
+                                <input type="number" id="meralco-rate" class="rate-input" step="0.01" oninput="liveUpdateCalculation(this.value)">
+                            </div>
+                        </div>
+                        <div class="h2 fw-800 text-success my-4" id="saved-val">₱0.0000</div>
+                        <button class="btn btn-sm btn-outline-success rounded-pill fw-bold px-3" onclick="toggleSavedView('history')">Analytics View ➔</button>
+                    </div>
+
+                    <div id="view-history-saved" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="outlet-label text-success" style="font-size: 0.65rem;">ANALYTICS</span>
+                                <button class="top-readings-btn" id="btn-readings" onclick="changePeriod('readings')">Power Readings</button>
+                            </div>
+                            <button class="btn btn-sm btn-success py-0 px-2 fw-bold" onclick="toggleSavedView('main')">✕</button>
+                        </div>
+                        <div class="d-flex justify-content-center gap-1 mb-2" id="period-filters">
+                            <button class="btn btn-dark btn-sm filter-btn active-filter" id="btn-daily" onclick="changePeriod('daily')">DAILY</button>
+                            <button class="btn btn-dark btn-sm filter-btn" id="btn-weekly" onclick="changePeriod('weekly')">WEEKLY</button>
+                            <button class="btn btn-dark btn-sm filter-btn" id="btn-monthly" onclick="changePeriod('monthly')">MONTHLY</button>
+                            <button class="btn btn-dark btn-sm filter-btn" id="btn-yearly" onclick="changePeriod('yearly')">YEARLY</button>
+                        </div>
+                        <div class="log-container">
+                            <div id="summary-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="glass-card">
+                    <div class="section-header"><div class="header-dot"></div><h6 class="header-title">Power Usage (Watts)</h6></div>
+                    <div style="height: 280px;"><canvas id="dualChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="glass-card log-outer-card">
+                    <div class="p-3 pb-0"><div class="section-header"><div class="header-dot" style="background-color: #f44; box-shadow: 0 0 10px #f44;"></div><h6 class="header-title">Live System Activity</h6></div></div>
+                    <div class="log-scroll-area">
+                        <table class="table-logs table-dark table-hover">
+                            <thead><tr><th>Time</th><th>Source</th><th>Status</th></tr></thead>
+                            <tbody id="log-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SB_URL = 'https://jjihbptnvxmxfnzkyqdi.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqaWhicHRudnhteGZuemt5cWRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0OTI2OTEsImV4cCI6MjA4NzA2ODY5MX0.7OSUADgJfzaAFYULGGen_nX39cSg8MiUjHVUpB2SZOY';
+        const _supabase = supabase.createClient(SB_URL, SB_KEY);
+
+        let currentPeriod = 'daily';
+        let allSummaries = [];
+        let dualChart;
+        let h1Data = Array(24).fill(0);
+        let h2Data = Array(24).fill(0);
+        let isInitialLoad = true;
+
+        window.onload = () => {
+            fetchCurrentRate();
+            initChart();
+            fetchData();
+            setInterval(fetchData, 5000);
+        };
+
+        async function fetchCurrentRate() {
+            const input = document.getElementById('meralco-rate');
+            const savedLocalRate = localStorage.getItem('userRate');
+            if (savedLocalRate) input.value = savedLocalRate;
+            else {
+                const { data } = await _supabase.from('daily_summary').select('current_rate').order('date', { ascending: false }).limit(1);
+                input.value = (data && data.length > 0) ? data[0].current_rate : "13.82";
+            }
+        }
+
+        function getPHHour(dateString) {
+            const formatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Manila' });
+            return parseInt(formatter.formatToParts(new Date(dateString)).find(p => p.type === 'hour').value) % 24;
+        }
+
+        function getPHDate(dateString) {
+            return new Date(dateString || new Date()).toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+        }
+
+        async function fetchData() {
+            try {
+                const todayStr = getPHDate();
+                const inputRate = parseFloat(document.getElementById('meralco-rate').value) || 13.82;
+
+                // 1. KUNIN ANG HOURLY SUMMARY PARA SA CHART
+                const { data: hourlyData } = await _supabase
+                    .from('hourly_summary')
+                    .select('*')
+                    .eq('date', todayStr);
+
+                // 2. KUNIN ANG REAL-TIME DATA PARA SA CARDS AT LOGS
+                const { data: realTime } = await _supabase
+                    .from('power_readings')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                // 3. KUNIN ANG DAILY SUMMARY PARA SA TOTAL SAVED COST AT ANALYTICS
+                const { data: summaries } = await _supabase
+                    .from('daily_summary')
+                    .select('*')
+                    .order('date', { ascending: false });
+
+                // --- EXECUTION: I-UPDATE ANG CHART ---
+                h1Data.fill(0);
+                h2Data.fill(0);
+                if (hourlyData) {
+                    hourlyData.forEach(row => {
+                        if (row.outlet_id == 1) h1Data[row.hour] = row.peak_watts;
+                        if (row.outlet_id == 2) h2Data[row.hour] = row.peak_watts;
+                    });
+                    dualChart.data.datasets[0].data = [...h1Data];
+                    dualChart.data.datasets[1].data = [...h2Data];
+                    dualChart.update('none');
+                }
+
+                // --- EXECUTION: I-UPDATE ANG CARDS AT LOGS ---
+                if (realTime && realTime.length > 0) {
+                    [1, 2].forEach(id => {
+                        const r = realTime.find(item => item.outlet_id == id);
+                        if (r) {
+                            const wattsElement = document.getElementById(`watts-${id}`);
+                            const statusElement = document.getElementById(`status-${id}`);
+                            if (r.status === 'OFF' || r.status === 'SAVING') {
+                                wattsElement.innerText = "0.00";
+                                statusElement.className = "status-badge status-off";
+                            } else {
+                                wattsElement.innerText = r.watts.toFixed(2);
+                                statusElement.className = "status-badge status-on";
+                            }
+                            statusElement.innerText = "Status: " + r.status;
+                        }
+                    });
+                    renderLogs(realTime);
+                }
+
+                // --- EXECUTION: I-UPDATE ANG SAVED COST AT ANALYTICS ---
+                if (summaries) {
+                    allSummaries = summaries; // Para sa analytics view
+                    const grandTotal = summaries.reduce((sum, item) => {
+                        let rate = (item.date === todayStr) ? inputRate : item.current_rate;
+                        return sum + (item.total_saved_kwh * rate);
+                    }, 0);
+                    document.getElementById('saved-val').innerText = '₱' + grandTotal.toFixed(4);
+                    renderAnalytics();
+                }
+
+            } catch (e) {
+                console.error("EcoSync Fetch Error:", e);
+            }
+        }
+
+        async function updateStatus(id, stat) {
+            const currentWatts = parseFloat(document.getElementById(`watts-${id}`).innerText) || 0;
+            await _supabase.from('power_readings').insert([{ outlet_id: id, status: stat, watts: stat === 'OFF' ? 0 : currentWatts, voltage: 220, saved_seconds: 0 }]);
+            fetchData();
+        }
+
+        function liveUpdateCalculation(val) {
+            const rate = parseFloat(val); if (isNaN(rate)) return;
+            localStorage.setItem('userRate', rate);
+            fetchData();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('dualChart').getContext('2d');
+            dualChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({ length: 24 }, (_, i) => i + ":00"),
+                    datasets: [
+                        { label: 'Outlet 1', backgroundColor: '#00d2ff', data: Array(24).fill(0), borderRadius: 6, barPercentage: 0.85, categoryPercentage: 0.8 },
+                        { label: 'Outlet 2', backgroundColor: '#ff4444', data: Array(24).fill(0), borderRadius: 6, barPercentage: 0.85, categoryPercentage: 0.8 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'Peak Watts (24h)', color: '#8b949e' }, ticks: { color: '#8b949e' } },
+                        x: { grid: { display: false }, ticks: { color: '#8b949e', font: { size: 10 } } }
+                    },
+                    plugins: { legend: { labels: { color: '#ffffff', boxWidth: 15 } }, tooltip: { mode: 'index', intersect: false } }
+                }
+            });
+        }
+
+        function renderLogs(readings) {
+            document.getElementById('log-body').innerHTML = readings.map(r => {
+                const timeStr = new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' });
+                return `<tr><td>${timeStr}</td><td>Outlet ${r.outlet_id}</td><td class="${r.status === 'OFF' ? 'text-danger' : 'text-success'} fw-bold">${r.status}</td></tr>`;
+            }).join('');
+        }
+
+        async function renderAnalytics() {
+            const list = document.getElementById('summary-list');
+            if (!list) return;
+            const inputRate = parseFloat(document.getElementById('meralco-rate').value) || 13.82;
+            const todayStr = getPHDate();
+
+            if (currentPeriod === 'readings') {
+                const { data } = await _supabase.from('power_readings').select('*').order('created_at', { ascending: false }).limit(15);
+                if (data) {
+                    list.innerHTML = `<table class="table-readings"><thead><tr><th>Time</th><th>Secs</th><th>Peso</th></tr></thead><tbody>` +
+                        data.map(r => {
+                            const timeStr = new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Manila' });
+                            return `<tr><td>${timeStr}</td><td>${r.saved_seconds}s</td><td>₱${(r.saved_seconds * (r.watts / 3600000) * inputRate).toFixed(4)}</td></tr>`;
+                        }).join('') + `</tbody></table>`;
+                }
+                return;
+            }
+
+            let grouped = {};
+            allSummaries.forEach(item => {
+                const d = new Date(item.date);
+                let key;
+                if (currentPeriod === 'daily') key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                else if (currentPeriod === 'weekly') {
+                    const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                    const start = new Date(new Date(item.date).setDate(diff)); const end = new Date(new Date(item.date).setDate(diff + 6));
+                    key = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + " - " + end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+                else if (currentPeriod === 'monthly') key = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                else if (currentPeriod === 'yearly') key = d.getFullYear().toString();
+
+                if (!grouped[key]) grouped[key] = { kwh: 0, peso: 0 };
+                grouped[key].kwh += item.total_saved_kwh;
+                let rate = (item.date === todayStr) ? inputRate : item.current_rate;
+                grouped[key].peso += (item.total_saved_kwh * rate);
+            });
+
+            list.innerHTML = Object.keys(grouped).map(k => `<div class="summary-item"><span class="summary-date">${k}</span><span class="summary-details">${grouped[k].kwh.toFixed(5)} kWh saved | <span class="text-success">₱${grouped[k].peso.toFixed(4)}</span></span></div>`).join('');
+        }
+
+        function changePeriod(p) {
+            const filters = document.getElementById('period-filters');
+            const readingsBtn = document.getElementById('btn-readings');
+            if (p === 'readings') {
+                if (currentPeriod === 'readings') {
+                    currentPeriod = 'daily';
+                    filters.setAttribute('style', 'display: flex !important');
+                    readingsBtn.classList.remove('active-filter');
+                    document.getElementById('btn-daily').classList.add('active-filter');
+                } else {
+                    currentPeriod = 'readings';
+                    filters.setAttribute('style', 'display: none !important');
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active-filter'));
+                    readingsBtn.classList.add('active-filter');
+                }
+            } else {
+                currentPeriod = p;
+                filters.setAttribute('style', 'display: flex !important');
+                document.querySelectorAll('.filter-btn, .top-readings-btn').forEach(b => b.classList.remove('active-filter'));
+                document.getElementById('btn-' + p).classList.add('active-filter');
+            }
+            renderAnalytics();
+        }
+
+        function toggleSavedView(v) {
+            document.getElementById('view-main-saved').style.display = v === 'history' ? 'none' : 'block';
+            document.getElementById('view-history-saved').style.display = v === 'history' ? 'block' : 'none';
+            if (v === 'history') renderAnalytics();
+        }
+    </script>
+</body>
+</html>
